@@ -1,0 +1,112 @@
+control.onEvent(EventBusSource.MES_DPAD_CONTROLLER_ID, EventBusValue.MICROBIT_EVT_ANY, () => {
+    if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_A_DOWN) {
+        images.iconImage(IconNames.Happy).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 1)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_A_UP) {
+        images.iconImage(IconNames.Square).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_B_DOWN) {
+        images.iconImage(IconNames.Target).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 1)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_B_UP) {
+        images.iconImage(IconNames.Square).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_C_DOWN) {
+        images.iconImage(IconNames.Sword).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 1)
+        pins.digitalWritePin(DigitalPin.P14, 1)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_C_UP) {
+        images.iconImage(IconNames.Square).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_D_DOWN) {
+        images.iconImage(IconNames.Target).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 1)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_D_UP) {
+        images.iconImage(IconNames.Square).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_1_DOWN) {
+        images.iconImage(IconNames.EigthNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 1)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 1)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_1_UP) {
+        images.iconImage(IconNames.EigthNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_2_DOWN) {
+        images.iconImage(IconNames.Triangle).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 1)
+        pins.digitalWritePin(DigitalPin.P15, 1)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_2_UP) {
+        images.iconImage(IconNames.EigthNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_3_DOWN) {
+        images.iconImage(IconNames.No).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 1)
+        pins.digitalWritePin(DigitalPin.P14, 1)
+        pins.digitalWritePin(DigitalPin.P15, 1)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_3_UP) {
+        images.iconImage(IconNames.EigthNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_4_UP) {
+        images.iconImage(IconNames.EigthNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 0)
+    } else if (control.eventValue() == EventBusValue.MES_DPAD_BUTTON_4_DOWN) {
+        images.iconImage(IconNames.QuarterNote).showImage(0)
+        pins.digitalWritePin(DigitalPin.P13, 0)
+        pins.digitalWritePin(DigitalPin.P14, 0)
+        pins.digitalWritePin(DigitalPin.P15, 0)
+        pins.digitalWritePin(DigitalPin.P16, 1)
+    }
+})
+bluetooth.onBluetoothConnected(() => {
+    images.iconImage(IconNames.Yes).showImage(0)
+})
+bluetooth.onBluetoothDisconnected(() => {
+    images.iconImage(IconNames.Square).showImage(0)
+})
+images.iconImage(IconNames.SmallSquare).showImage(0)
+basic.pause(1000)
+pins.digitalWritePin(DigitalPin.P13, 0)
+pins.digitalWritePin(DigitalPin.P14, 0)
+pins.digitalWritePin(DigitalPin.P15, 0)
+pins.digitalWritePin(DigitalPin.P16, 0)
+
