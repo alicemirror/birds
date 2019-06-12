@@ -3,87 +3,101 @@
  * \brief The arduino file for the dancing birds project, 
  * Arduino Mega only for Art-a-Tronic exhibition
  * 
- * \date April 2019
+ * \date April 2019 = June 2019
  * \author Enrico Miglino <balearicdynamics@gmail.com>
- * \version 2.0
+ * \version 2.1
  * 
  */
+#undef _DEBUG
+
 #include <Servo.h>
 
-#define PIR_PIN 8               ///< Pir sensor pin
+#ifdef _DEBUG
+#include <Streaming.h>
+#endif
 
-#define BIRD1_PIN 0             ///< Bird pin index (servo control)
-#define BIRD2_PIN 1             ///< Bird pin index (servo control)
-#define BIRD3_PIN 2             ///< Bird pin index (servo control)
-#define BIRD4_PIN 3             ///< Bird pin index (servo control)
-#define BRID_PLATFORM_PIN 4     ///< Queue motion servo
-#define MUSICBUTTON_PIN 5       ///< Music selection button servo 
-#define MUSIC_CONTROL_PIN 2     ///< Music power pin
-
-#define NUMSERVOS 6             ///< Number of servos organised in an array
-
-#define END_SEQ_DELAY 30000     ///< End sequence delay before checking the PIR again (ms)
-
-#define MIN_ANGLE 0     ///< Real min angle of the servo. 0-180 Deg is refactored to it
-#define MAX_ANGLE 150   ///< Ream max angle of the servo. 0-180 Deg is rfactored to it
+#include "constants.h"
 
 //! Array of the servo pins
 int servoPins[NUMSERVOS] = { 23, 25, 27, 29, 31, 33 };
 //! Array of the servo library instances (one every servo)
 Servo servos[NUMSERVOS];
 
-// ===============================================
-//  Birds Commands
-// ===============================================
-
-#define CMD_JUMP 0x01               ///< Birds platform jump once
-#define CMD_ROTATE_RIGHT 0x02       ///< Rotate current bird right (no action if reach limit)
-#define CMD_NEXT_BIRD 0x03          ///< Move control to next bird (1-4 cyclic)
-#define CMD_ROTATE_LEFT 0x04        ///< Rotate current bird left (no action if reach limit)
-#define CMD_MUSIC 0x05              ///< Change the status of the music player (On/Off)
-#define CMD_SOUND 0x06              ///< Change the current playing music
-#define CMD_DANCE 0X07              ///< Set birds dancing On/Off
-#define CMD_STOP 0X08               ///< Power off the game
-
-//! Commands constants
-#define BIRDS_ROT_STEP 10    ///< Manual rotation step of the birds (Deg)
-#define BIRDS_QUIET 90      ///< 
-#define BIRDS_MIN_ROT 0     ///< Minimum rotation angle of the birds (Deg)
-#define BIRDS_MAX_ROT 180   ///< Minimum rotation angle of the birds (Deg)
-#define BIRDS_RESTING 90    ///< Birds resting oint angle (Deg)
-#define NUM_BIRDS 4         ///< Number of birds
-
-#define BIRDS_JUMP_UP 90     ///< Birds platform up position (Deg)
-#define BIRDS_JUMP_DOWN 135  ///< Birds platform down position (Deg)
-#define BIRDS_JUMP_DELAY 500    ///< Duration of the birds platform jump
-
-#define MUSIC_BUTTON_DOWN 60    ///< Music change button press position (Deg)
-#define MUSIC_BUTTON_UP 0       ///< Music change button release position (Deg)
-#define MUSIC_BUTTON_DELAY 600  ///< Delay of the music change button press to take effect (ms)
-
-#define BIRD_DIRECTION_CW +1    ///< Birds rotation direction
-#define BIRD_DIRECTION_CCW -1   ///< Birds rotation direction
-
-//! Structure defining the status of the commands
-typedef struct {
-    boolean music;                      ///< The status of the music player
-    boolean changeMusic;                ///< Request to press the music change button
-    boolean dance;                      ///< Current dance status
-    int birdsRotation[NUM_BIRDS];       ///< The birds rotation status
-    boolean birdsJump;                  ///< Flex the birds
-    int rotateDirection[NUM_BIRDS];     ///< Current rotation direction of the birds (+1/-1)
-    int currentBird;                    ///< Current bird selected for motion
-} cmdStatus;
-
 cmdStatus birdsActivity;
+
+
+//! Initialisation function
+void setup() {
+    int j;
+#ifdef _DEBUG
+    Serial.begin(9600);
+#endif
+    // Initialize the music power On/Off
+    pinMode(MUSIC_CONTROL_PIN, OUTPUT);
+    // Initilize the status structure and the servos
+    initActivityStatus();
+    // Test the servos on startup
+    testSystem();
+}
+
+//! Application main loop
+void loop() {
+    int j;
+
+    // Music on
+#ifdef _DEBUG
+    Serial << "Loop() musicOn" << endl;
+#endif
+    setupCommand(CMD_MUSIC);
+    commandProcessor();
+    delay(150);
+
+    // Action cycle
+    for(j = 0; j < ACTION_LOOP_CYCLES; j++) {
+#ifdef _DEBUG
+    Serial << "Loop() Action loop cycle " << j << endl;
+#endif
+        setupCommand(CMD_JUMP);
+        commandProcessor();
+        delay(150);
+        setupCommand(CMD_DANCE);
+        commandProcessor();
+        setupCommand(CMD_SOUND);
+        commandProcessor();
+        delay(150);
+    }
+
+    // Music off
+#ifdef _DEBUG
+    Serial << "Loop() musicOff" << endl;
+#endif
+    setupCommand(CMD_MUSIC);
+    commandProcessor();
+    delay(150);
+
+    // Pause
+    delay(ACTION_LOOP_PAUSE);
+}
+// ============================================================
+//                      FUNCTIONS & COMMANDS
+// ============================================================
 
 /** 
  * Initialize the commands status structure and set the status 
  * of the servos accordingly
  */
 void initActivityStatus() {
-    int j;
-    
+    initBirds();
+    powerMusic();
+    initServos();
+}
+
+//
+/**
+ * Initialize the birds platform and preset the comands structure
+ * and servos status
+ */
+void initBirds() {
     // Initialize the activity structure
     birdsActivity.music = false;
     birdsActivity.dance = false;
@@ -91,12 +105,12 @@ void initActivityStatus() {
     birdsActivity.birdsJump = false;
     birdsActivity.currentBird = 0;
 
+    int j;
+    
     for(j = 0; j < NUM_BIRDS; j++) {
         birdsActivity.birdsRotation[j] = BIRDS_QUIET;
         birdsActivity.rotateDirection[j] = BIRD_DIRECTION_CW;
     }
-    powerMusic();
-    initServos();
 }
 
 /**
@@ -201,7 +215,7 @@ void setServo(int num, int deg) {
 }
 
 /**
- * Set On/Off the music player. he command needs half a second
+ * Set On/Off the music player. The command needs half a second
  * of delay to be completed.
  */
 void powerMusic() {
@@ -228,59 +242,68 @@ void changeMusic() {
 }
 
 /**
- * Executes the dance sequence of type "A"
+ * Executes the dance sequence for the desired period
  * The dance steps are exectued starting from the current position
  * of every bird.
+ * 
+ * @param duration The period to dance (ms)
  */
-void dance() {
-    int j, k = 0;
+void dance(int duration) {
+    int j, k = 0, danceSteps;
+
+#ifdef _DEBUG
+    Serial << "dance() steps " << duration << endl;
+#endif
 
     // Initialize the dance, only if the dance flag is set
-    // else the birds position is reset to quiet and manual
-    // rotation has no efect
-//    if(birdsActivity.dance) {
+    if(birdsActivity.dance) {
 //      initDance();
 //      delay(250);
-//    }
 
-    // Dance until the dance stops
-    while(birdsActivity.dance) {    
-      int b;
-      // Loop the birds        
-      for(b = 0; b < NUM_BIRDS; b++) {
-          // -----------------------------------
-          // Check for the direction clockwise
-          // -----------------------------------
-          if(birdsActivity.rotateDirection[b] == BIRD_DIRECTION_CW) {
-              // Check if the position is at the end and invert the direction
-              if(birdsActivity.birdsRotation[b] >= BIRDS_MAX_ROT) {
-                  // Invert the direction
-                  birdsActivity.rotateDirection[b] = BIRD_DIRECTION_CCW;
-              } // Invert direction
-              else {
-                  // Increment the step
-                  birdsActivity.birdsRotation[b] += BIRDS_ROT_STEP;
-              } // Directiion clockwise
-          } else {
+        // Dance until the end of world (cit.)
+        for(danceSteps = 0; danceSteps < duration; danceSteps++) {  
+          int b;
+
+#ifdef _DEBUG
+    Serial << "dance() dancing " << danceSteps << endl;
+#endif
+
+          // Loop the birds        
+          for(b = 0; b < NUM_BIRDS; b++) {
               // -----------------------------------
-              // Direction counterclockwise
+              // Check for the direction clockwise
               // -----------------------------------
-              // Check if the position is at the end and invert the direction
-              if(birdsActivity.birdsRotation[b] <= BIRDS_MIN_ROT) {
-                  // Invert the direction
-                  birdsActivity.rotateDirection[b] = BIRD_DIRECTION_CW;
-              } // Invert direction
-              else {
-                  // Decrement the step
-                  birdsActivity.birdsRotation[b] -= BIRDS_ROT_STEP;
-              } // Decrement the position
-          } // Direction counterclockwise
-          // Position the bird servo
-          birdsActivity.currentBird = b;
-          rotateBird();
-          delay(50);
-        } // Loop the birds
-  } // Dance until...
+              if(birdsActivity.rotateDirection[b] == BIRD_DIRECTION_CW) {
+                  // Check if the position is at the end and invert the direction
+                  if(birdsActivity.birdsRotation[b] >= BIRDS_MAX_ROT) {
+                      // Invert the direction
+                      birdsActivity.rotateDirection[b] = BIRD_DIRECTION_CCW;
+                  } // Invert direction
+                  else {
+                      // Increment the step
+                      birdsActivity.birdsRotation[b] += BIRDS_ROT_STEP;
+                  } // Directiion clockwise
+              } else {
+                  // -----------------------------------
+                  // Direction counterclockwise
+                  // -----------------------------------
+                  // Check if the position is at the end and invert the direction
+                  if(birdsActivity.birdsRotation[b] <= BIRDS_MIN_ROT) {
+                      // Invert the direction
+                      birdsActivity.rotateDirection[b] = BIRD_DIRECTION_CW;
+                  } // Invert direction
+                  else {
+                      // Decrement the step
+                      birdsActivity.birdsRotation[b] -= BIRDS_ROT_STEP;
+                  } // Decrement the position
+              } // Direction counterclockwise
+              // Position the bird servo
+              birdsActivity.currentBird = b;
+              rotateBird();
+              delay(150);
+            } // Loop the birds
+        } // Dance until...
+    }
 }
 
 /**
@@ -295,7 +318,7 @@ void rotateBird() {
  * Mnually rotate the current selected bird of a single step
  * when the right or let limit is reached the rotation stops
  */
-void manualRotateBird() {
+void stepRotateBird() {
 
   if(birdsActivity.rotateDirection[birdsActivity.currentBird] == BIRD_DIRECTION_CW) {
       // Check if the position is at the end and invert the direction
@@ -320,7 +343,7 @@ void manualRotateBird() {
 /**
  * Execute the padByte command
  */
-void checkPadStatus(int padByte) {
+void setupCommand(int padByte) {
 
   switch(padByte) {
     
@@ -336,7 +359,7 @@ void checkPadStatus(int padByte) {
       // Set the rotation direction to clockwise.
       // This command disable the dance mode.
       birdsActivity.rotateDirection[birdsActivity.currentBird] = BIRD_DIRECTION_CW;
-      manualRotateBird();
+      stepRotateBird();
       delay(150); // avoid multiple commands
       break;
 
@@ -355,13 +378,12 @@ void checkPadStatus(int padByte) {
       // Set the rotation direction to counterclockwise.
       // This command disable the dance mode.
       birdsActivity.rotateDirection[birdsActivity.currentBird] = BIRD_DIRECTION_CCW;
-      manualRotateBird();
+      stepRotateBird();
       delay(150); // avoid multiple commands
       break;
 
     case CMD_MUSIC:
-      // Change the music status. The command is processed in 
-      // the main loop main or in the dance command/
+      // Change the music status. 
       // Disabling the music dance if running is stoped
       if(birdsActivity.music) {
         birdsActivity.music = false;
@@ -407,70 +429,5 @@ void checkPadStatus(int padByte) {
  void commandProcessor() {
   jumpBirds();
   changeMusic();
-  dance();
+  dance(DANCE_CYCLE);
  }
-
-//! Initialisation function
-void setup() {
-    int j;
-
-    // Initialize the music power On/Off
-    pinMode(MUSIC_CONTROL_PIN, OUTPUT);
-    // Initilize the status structure and the servos
-    initActivityStatus();
-    // Test the servos on startup
-    testSystem();
-}
-
-//! Application main loop
-/*
-CMD_JUMP 0x01               ///< Birds platform jump once
-CMD_ROTATE_RIGHT 0x02       ///< Rotate current bird right (no action if reach limit)
-CMD_NEXT_BIRD 0x03          ///< Move control to next bird (1-4 cyclic)
-CMD_ROTATE_LEFT 0x04        ///< Rotate current bird left (no action if reach limit)
-CMD_MUSIC 0x05              ///< Change the status of the music player (On/Off)
-CMD_SOUND 0x06              ///< Change the current playing music
-CMD_DANCE 0X07              ///< Set birds dancing On/Off
-CMD_STOP 0X08               ///< Power off the game
- */
-
-void loop() {
-  checkPadStatus(CMD_MUSIC);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_SOUND);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_SOUND);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_JUMP);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_JUMP);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_DANCE);
-  commandProcessor();
-  delay(5000);
-  checkPadStatus(CMD_SOUND);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_SOUND);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_JUMP);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_JUMP);
-  commandProcessor();
-  delay(150);
-  checkPadStatus(CMD_DANCE);
-  commandProcessor();
-  delay(5000);
-  checkPadStatus(CMD_STOP);
-  commandProcessor();
-  checkPadStatus(CMD_MUSIC);
-  commandProcessor();
-  delay(60000);
-}
