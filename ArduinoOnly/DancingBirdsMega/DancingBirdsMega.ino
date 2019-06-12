@@ -1,15 +1,16 @@
 /**
- * \file DancingBirds.ino
- * \brief The arduino file for the dancing birds project
+ * \file DancingBirdsMega.ino
+ * \brief The arduino file for the dancing birds project, 
+ * Arduino Mega only for Art-a-Tronic exhibition
  * 
- * \date September-October 2018
+ * \date April 2019
  * \author Enrico Miglino <balearicdynamics@gmail.com>
- * \version 1.0
+ * \version 2.0
  * 
  */
 #include <Servo.h>
 
-#define _DEBUG
+#define PIR_PIN 8               ///< Pir sensor pin
 
 #define BIRD1_PIN 0             ///< Bird pin index (servo control)
 #define BIRD2_PIN 1             ///< Bird pin index (servo control)
@@ -21,6 +22,8 @@
 
 #define NUMSERVOS 6             ///< Number of servos organised in an array
 
+#define END_SEQ_DELAY 30000     ///< End sequence delay before checking the PIR again (ms)
+
 #define MIN_ANGLE 0     ///< Real min angle of the servo. 0-180 Deg is refactored to it
 #define MAX_ANGLE 150   ///< Ream max angle of the servo. 0-180 Deg is rfactored to it
 
@@ -28,14 +31,6 @@
 int servoPins[NUMSERVOS] = { 23, 25, 27, 29, 31, 33 };
 //! Array of the servo library instances (one every servo)
 Servo servos[NUMSERVOS];
-
-// ===============================================
-//  Pad pins
-// ===============================================
-#define NUM_PADS 4    ///< Pad buttons bits
-
-//! Array of the pad pins
-int padPins[NUM_PADS] = { 22, 24, 26, 28 };
 
 // ===============================================
 //  Birds Commands
@@ -284,30 +279,6 @@ void dance() {
           birdsActivity.currentBird = b;
           rotateBird();
           delay(50);
-
-          // Check for new commands in queue.
-          // Only the dance commands are accepted
-          // Note that only music has effect on the global structure
-          k = checkMicroBitCommand();
-          // Check for jump
-          if(k == CMD_JUMP) {
-      birdsActivity.birdsJump = true;
-            jumpBirds();
-            delay(10);
-          } // Jump
-          // Check for msic change
-          if(k == CMD_SOUND) {
-            birdsActivity.changeMusic = true;
-            changeMusic();
-            delay(100);
-          } // Change music
-          // Check for msic stop, dance ends
-          if(k == CMD_MUSIC) {
-            birdsActivity.music = false;
-            birdsActivity.dance = false;
-            powerMusic();
-            delay(100);
-          } // Music On/Off
         } // Loop the birds
   } // Dance until...
 }
@@ -344,47 +315,16 @@ void manualRotateBird() {
   } // Direction counterclockwise
   // Position the bird servo
   rotateBird();
-#ifdef _DEBUG
-  Serial.print("Brid ");
-  Serial.println(birdsActivity.currentBird);
-  Serial.print(" Deg ");
-  Serial.println(birdsActivity.birdsRotation[birdsActivity.currentBird]);
-#endif
 }
 
 /**
- * Check if a command byte is available from the micro:bit signals.
- * This function is used by the nomal checkPadStatus() command
- * parser and by the Dance() function to make it interruptable
- * when the music is disabled.
+ * Execute the padByte command
  */
-int checkMicroBitCommand() {
-  int padByte = 0x00;
-
-  // Calculate the bite value
-  padByte = 1 * digitalRead(padPins[0]) +
-            2 * digitalRead(padPins[1]) +
-            4 * digitalRead(padPins[2]) +
-            8 * digitalRead(padPins[3]);
-  
-  return padByte;
-}
-
-/**
- * Check the status of the pad pins and update the 
- * status byte between 0x01 and 0x08
- */
-void checkPadStatus() {
-  int padByte = 0x00;
-
-  padByte = checkMicroBitCommand();
+void checkPadStatus(int padByte) {
 
   switch(padByte) {
     
     case CMD_JUMP:
-#ifdef _DEBUG
-  Serial.println("CMD_JUMP");
-#endif
       // Set the jump status request to true. The jump will be executed
       // anyway from the main loop or the dance function and does no
       // change the other statuses. After the jump is exectued the request
@@ -393,9 +333,6 @@ void checkPadStatus() {
       break;
 
     case CMD_ROTATE_RIGHT:
-#ifdef _DEBUG
-  Serial.println("CMD_ROTATE_RIGHT");
-#endif
       // Set the rotation direction to clockwise.
       // This command disable the dance mode.
       birdsActivity.rotateDirection[birdsActivity.currentBird] = BIRD_DIRECTION_CW;
@@ -404,9 +341,6 @@ void checkPadStatus() {
       break;
 
     case CMD_NEXT_BIRD:
-#ifdef _DEBUG
-  Serial.println("CMD_NEXT_BIRD");
-#endif
       // Change the current controlled bird to the next one. If
       // the max limit is reached, the next bird is the first one
       // This command disable the dance mode.
@@ -418,9 +352,6 @@ void checkPadStatus() {
       break;
 
     case CMD_ROTATE_LEFT:
-#ifdef _DEBUG
-  Serial.println("CMD_ROTATE_LEFT");
-#endif
       // Set the rotation direction to counterclockwise.
       // This command disable the dance mode.
       birdsActivity.rotateDirection[birdsActivity.currentBird] = BIRD_DIRECTION_CCW;
@@ -429,9 +360,6 @@ void checkPadStatus() {
       break;
 
     case CMD_MUSIC:
-#ifdef _DEBUG
-  Serial.println("CMD_MUSIC");
-#endif
       // Change the music status. The command is processed in 
       // the main loop main or in the dance command/
       // Disabling the music dance if running is stoped
@@ -446,9 +374,6 @@ void checkPadStatus() {
       break;
 
     case CMD_SOUND:
-#ifdef _DEBUG
-  Serial.println("CMD_SOUND");
-#endif
       // Set the change music request.
       // The command is processed in the main loop or at the end of a dance
       // sequece (end of movements loop cycle)
@@ -456,9 +381,6 @@ void checkPadStatus() {
       break;
 
     case CMD_DANCE:
-#ifdef _DEBUG
-  Serial.println("CMD_DANCE");
-#endif
       // Change the dance status. The command is processed in 
       // the main loop or in the dance command.
       // If the music is off the command has no effect (dance will be off)
@@ -470,9 +392,6 @@ void checkPadStatus() {
       break;
     
     case CMD_STOP:
-#ifdef _DEBUG
-  Serial.println("CMD_STOP");
-#endif
       initActivityStatus(); // Reinitialize the system
       break;
   }
@@ -497,26 +416,61 @@ void setup() {
 
     // Initialize the music power On/Off
     pinMode(MUSIC_CONTROL_PIN, OUTPUT);
-    // Initialize the control pad pins
-    for(j = 0; j < NUM_PADS; j++) {
-      pinMode(padPins[j], INPUT);
-    }
     // Initilize the status structure and the servos
     initActivityStatus();
     // Test the servos on startup
     testSystem();
-
-#ifdef _DEBUG
-    Serial.begin(9600);
-    Serial.println("\nStarted");
-#endif
 }
 
 //! Application main loop
-//! Constantly check the pad status and launch the command
-//! processor.
+/*
+CMD_JUMP 0x01               ///< Birds platform jump once
+CMD_ROTATE_RIGHT 0x02       ///< Rotate current bird right (no action if reach limit)
+CMD_NEXT_BIRD 0x03          ///< Move control to next bird (1-4 cyclic)
+CMD_ROTATE_LEFT 0x04        ///< Rotate current bird left (no action if reach limit)
+CMD_MUSIC 0x05              ///< Change the status of the music player (On/Off)
+CMD_SOUND 0x06              ///< Change the current playing music
+CMD_DANCE 0X07              ///< Set birds dancing On/Off
+CMD_STOP 0X08               ///< Power off the game
+ */
+
 void loop() {
-  checkPadStatus();
+  checkPadStatus(CMD_MUSIC);
   commandProcessor();
-  delay(200);
+  delay(150);
+  checkPadStatus(CMD_SOUND);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_SOUND);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_JUMP);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_JUMP);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_DANCE);
+  commandProcessor();
+  delay(5000);
+  checkPadStatus(CMD_SOUND);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_SOUND);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_JUMP);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_JUMP);
+  commandProcessor();
+  delay(150);
+  checkPadStatus(CMD_DANCE);
+  commandProcessor();
+  delay(5000);
+  checkPadStatus(CMD_STOP);
+  commandProcessor();
+  checkPadStatus(CMD_MUSIC);
+  commandProcessor();
+  delay(60000);
 }
